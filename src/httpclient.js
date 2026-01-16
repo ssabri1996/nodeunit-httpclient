@@ -96,7 +96,7 @@ methods.forEach(function(method) {
             port: this.port,
             path: fullPath,
             method: method == 'del' ? 'DELETE' : method.toUpperCase(),
-            headers: underscore.extend({}, this.reqHeaders, req.headers)
+            headers: underscore.extend({}, this.headers, req.headers)
         };
 
         if (req.auth) {
