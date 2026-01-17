@@ -3,7 +3,6 @@ var querystring = require('querystring'),
     underscore = require('underscore'),
     debug;
 
-
 /**
  * @param {object}  Options:
  *                      auth ('username:password')
@@ -12,7 +11,7 @@ var querystring = require('querystring'),
  *                      path ('')       - Base path URL e.g. '/api'
  *                      headers ({})    - Test that these headers are present on every response (unless overridden)
  *                      status (null)   - Test that every response has this status (unless overridden)
- *						https (false) 	- https/http
+ *                      https (false)   - https/http
  * @param options
  */
 var HttpClient = module.exports = function(options) {
@@ -20,11 +19,12 @@ var HttpClient = module.exports = function(options) {
 
     this.auth = options.auth || undefined;
     this.host = options.host || 'localhost';
-    this.port = options.port || 80;
+    this.port = options.port || (options.https ? 443 : 80);
     this.path = options.path || '';
     this.headers = options.headers || {};
     this.status = options.status;
-    this.http = require(options.https ? 'https' : 'http');
+    this.https = options.https || false;
+    this.http = require(this.https ? 'https' : 'http');
     debug = options.debug ? true : false;
 };
 
@@ -60,7 +60,6 @@ methods.forEach(function(method) {
                 req = {};
                 res = {};
             }
-
             //(assert, path, res)
             else {
                 cb = null;
@@ -87,8 +86,9 @@ methods.forEach(function(method) {
         //Don't add to querystring if POST or PUT
         if (['post', 'put'].indexOf(method) === -1) {
             var data = req.data;
-
-            if (data) {fullPath += '?' + querystring.stringify(data);}
+            if (data) {
+                fullPath += '?' + querystring.stringify(data);
+            }
         }
 
         var options = {
@@ -96,7 +96,8 @@ methods.forEach(function(method) {
             port: this.port,
             path: fullPath,
             method: method == 'del' ? 'DELETE' : method.toUpperCase(),
-            headers: underscore.extend({}, this.headers, req.headers)
+            headers: underscore.extend({}, this.headers, req.headers || {}),
+            rejectUnauthorized: false // Pour éviter les erreurs de certificat SSL en dev
         };
 
         if (req.auth) {
@@ -107,31 +108,59 @@ methods.forEach(function(method) {
 
         var request = this.http.request(options);
 
-        //Write POST & PUTdata
+        //Write POST & PUT data
         if (['post', 'put'].indexOf(method) != -1) {
             var data = req.data || req.body;
 
             if (data) {
                 if (typeof data == 'object') {
-                    request.setHeader('content-type', 'application/json');
-                    request.write(JSON.stringify(data));
+                    options.headers['content-type'] = 'application/json';
+                    var jsonData = JSON.stringify(data);
+                    options.headers['content-length'] = Buffer.byteLength(jsonData);
+                    request.write(jsonData);
                 } else {
+                    options.headers['content-length'] = Buffer.byteLength(data);
                     request.write(data);
                 }
             }
         }
 
-        if (debug) {httpClientLogger.log('REQUEST', request);}
+        if (debug) {
+            httpClientLogger.log('REQUEST', {
+                method: options.method,
+                host: options.host,
+                port: options.port,
+                path: options.path,
+                headers: options.headers
+            });
+        }
+
         //Send
         request.end();
 
+        request.on('error', function(err) {
+            console.error('Request error:', err);
+            if (cb) {
+                return cb(null, err);
+            } else if (assert) {
+                assert.ok(false, 'Request failed: ' + err.message);
+                return assert.done();
+            }
+        });
+
         request.on('response', function(response) {
-            if (debug) {httpClientLogger.log('RESPONSE', response);}
+            if (debug) {
+                httpClientLogger.log('RESPONSE', {
+                    statusCode: response.statusCode,
+                    headers: response.headers
+                });
+            }
 
             response.setEncoding('utf8');
+            response.body = '';
 
             response.on('data', function(chunk) {
-                if (response.body) {response.body += chunk;} else {response.body = chunk;}
+                response.body += chunk;
             });
 
             //Handle the response; run response tests and hand back control to test
@@ -139,24 +168,28 @@ methods.forEach(function(method) {
                 //Add parsed JSON
                 var contentType = response.headers['content-type'];
                 if (contentType && contentType.indexOf('application/json') != -1) {
-                    if (typeof response.body != 'undefined') {
+                    if (response.body) {
                         //Catch errors on JSON.parse and attempt to handle cases where the response.body contains html
                         try {
                             response.data = JSON.parse(response.body);
                         } catch (err) {
                             console.log('JSON.parse response.body error:');
                             console.log(err);
-                            if (debug) {httpClientLogger.log('RESPONSE.BODY', response.body);}
+                            if (debug) {
+                                httpClientLogger.log('RESPONSE.BODY', response.body);
+                            }
                             var responseTest = response.body.split('{');
                             if (responseTest.length > 1) {
                                 var actualResponse = '{' + responseTest[1];
                                 try {
                                     response.data = JSON.parse(actualResponse);
                                     console.log('JSON.parse second attempt success.');
-                                } catch (err) {
+                                } catch (err2) {
                                     console.log('JSON.parse error on second parse attempt.');
-                                    console.log(err);
-                                    if (debug) {httpClientLogger.log('FILTERED RESPONSE.BODY', actualResponse);}
+                                    console.log(err2);
+                                    if (debug) {
+                                        httpClientLogger.log('FILTERED RESPONSE.BODY', actualResponse);
+                                    }
                                 }
                             }
                         }
@@ -171,29 +204,32 @@ methods.forEach(function(method) {
                     //Status code
                     var status = res.status || self.status;
                     if (status) {
-                        assert.equal(response.statusCode, status);
+                        assert.equal(response.statusCode, status, 'Status code mismatch');
                     }
 
                     //Headers
                     var headers = underscore.extend({}, self.headers, res.headers);
                     for (var key in headers) {
-                        assert.equal(response.headers[key], headers[key]);
+                        assert.equal(response.headers[key], headers[key], 'Header mismatch: ' + key);
                     }
 
                     //Body
                     if (res.body) {
-                        assert.equal(response.body, res.body);
+                        assert.equal(response.body, res.body, 'Body mismatch');
                     }
 
                     //JSON data
                     if (res.data) {
-                        assert.deepEqual(response.data, res.data);
+                        assert.deepEqual(response.data, res.data, 'Data mismatch');
                     }
                 })();
 
-
                 //Done, return control to test
-                if (cb) {return cb(response);} else {return assert.done();}
+                if (cb) {
+                    return cb(response);
+                } else if (assert) {
+                    return assert.done();
+                }
             });
         });
     };
@@ -201,7 +237,7 @@ methods.forEach(function(method) {
 
 var httpClientLogger = {
     log: function(header, data) {
-        console.log(header);
-        console.log(data);
+        console.log('=== ' + header + ' ===');
+        console.log(JSON.stringify(data, null, 2));
     }
 };
