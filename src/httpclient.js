@@ -148,8 +148,6 @@ methods.forEach(function(method) {
                 if (typeof bodyData === 'object') {
                     // JSON data
                     var jsonData = JSON.stringify(bodyData);
-                    request.setHeader('Content-Type', 'application/json');
-                    request.setHeader('Content-Length', Buffer.byteLength(jsonData));
                     request.write(jsonData);
                 } else if (typeof bodyData === 'string') {
                     // String data

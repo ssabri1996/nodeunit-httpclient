@@ -1,6 +1,6 @@
 {
   "name": "nodeunit-api-client",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Lightweight HTTP/HTTPS client with built-in testing assertions for Nodeunit",
   "main": "src/httpclient.js",
   "exports": {
