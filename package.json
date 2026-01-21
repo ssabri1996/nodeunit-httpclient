@@ -21,12 +21,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ssabri1996/nodeunit-httpclient.git"
+    "url": "git+https://github.com/ssabri1996/nodeunit-api-client.git"
   },
   "bugs": {
-    "url": "https://github.com/ssabri1996/nodeunit-httpclient/issues"
+    "url": "https://github.com/ssabri1996/nodeunit-api-client/issues"
   },
-  "homepage": "https://github.com/ssabri1996/nodeunit-httpclient#readme",
+  "homepage": "https://github.com/ssabri1996/nodeunit-api-client#readme",
   "scripts": {
     "test": "npx nodeunit test/httpclient.test.js",
     "prepublishOnly": "npm test"

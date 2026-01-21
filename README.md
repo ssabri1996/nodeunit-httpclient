@@ -30,7 +30,7 @@ npm install nodeunit-api-client
 const HttpClient = require('nodeunit-api-client');
 
 const api = new HttpClient({
-  protocol: 'https',
+  https: true,
   host: 'api.example.com',
   port: 443,
   path: '/v1'
@@ -49,7 +49,7 @@ api.get(null, '/users', function(response) {
 const HttpClient = require('nodeunit-api-client');
 
 const api = new HttpClient({
-  protocol: 'https',
+  https: true,
   host: 'api.example.com'
 });
 
@@ -94,7 +94,7 @@ api.get(null, '/search', {
 
 ```javascript
 new HttpClient({
-  protocol: 'http',        // 'http' or 'https' (default: 'http')
+  https: true,       // 'http' or 'https' (default: 'http')
   host: 'localhost',       // Server hostname
   port: 80,                // Server port (default: 80 for http, 443 for https)
   path: '',                // Base path (e.g. '/api/v1')
@@ -183,7 +183,7 @@ npm test
 
 ```javascript
 const api = new HttpClient({
-  protocol: 'https',
+  https: true,
   host: 'api.example.com',
   auth: 'username:password'
 });
@@ -197,7 +197,7 @@ api.get(null, '/protected', function(response) {
 
 ```javascript
 const api = new HttpClient({
-  protocol: 'https',
+  https: true,
   host: 'api.example.com',
   reqHeaders: {
     'X-API-Key': 'your-api-key',
@@ -229,7 +229,7 @@ api.get(null, '/endpoint', function(response) {
 const HttpClient = require('nodeunit-api-client');
 
 const api = new HttpClient({
-  protocol: 'https',
+  https: true,
   host: 'jsonplaceholder.typicode.com'
 });
 
@@ -262,7 +262,7 @@ exports.apiTests = {
 };
 ```
 ```bash
-Copyright (c) 2024 Sabri
+Copyright (c) 2026 Sabri
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
