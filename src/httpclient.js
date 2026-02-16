@@ -135,7 +135,7 @@ methods.forEach(function(method) {
                 var error = new Error('Request timeout after ' + options.timeout + 'ms');
                 error.code = 'TIMEOUT';
                 if (cb) {
-                    return cb(null, error);
+                    return cb(error, null);
                 }
             });
         }
@@ -262,7 +262,7 @@ methods.forEach(function(method) {
             };
 
             if (cb) {
-                return cb(null, error);
+                return cb(error, null);
             } else if (assert && assert.done) {
                 return assert.done(error);
             }
